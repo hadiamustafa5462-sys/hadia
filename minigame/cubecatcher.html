@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cube Catcher Mini-Game</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a2e;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            background: #16213e;
+            border: 4px solid #0f3460;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            cursor: none; /* Hide cursor to use player cube instead */
+        }
+        .ui {
+            position: absolute;
+            top: 20px;
+            text-align: center;
+            pointer-events: none;
+        }
+        h1 { margin: 0; font-size: 24px; color: #e94560; }
+        .score { font-size: 32px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="ui">
+        <h1>CUBE CATCHER</h1>
+        <div class="score" id="scoreVal">Score: 0</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('scoreVal');
+
+        canvas.width = 400;
+        canvas.height = 600;
+
+        // Game Variables
+        let score = 0;
+        let gameOver = false;
+        let cubes = [];
+        let spawnRate = 60; // Frames between spawns
+        let frameCount = 0;
+
+        // Player Object
+        const player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 60,
+            size: 50,
+            color: '#e94560'
+        };
+
+        // Track Mouse
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Center the player on the mouse X
+            player.x = (e.clientX - rect.left) - player.size / 2;
+            
+            // Keep player inside canvas
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+        });
+
+        function spawnCube() {
+            const size = 30;
+            const x = Math.random() * (canvas.width - size);
+            const isEnemy = Math.random() < 0.2; // 20% chance for a red enemy
+            
+            cubes.push({
+                x: x,
+                y: -size,
+                size: size,
+                speed: 3 + Math.random() * 3,
+                color: isEnemy ? '#ff4d4d' : '#47ffa3',
+                enemy: isEnemy
+            });
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            frameCount++;
+            if (frameCount % spawnRate === 0) {
+                spawnCube();
+                // Gradually speed up spawning
+                if (spawnRate > 20) spawnRate--; 
+            }
+
+            cubes.forEach((cube, index) => {
+                cube.y += cube.speed;
+
+                // Collision Detection (AABB)
+                if (cube.x < player.x + player.size &&
+                    cube.x + cube.size > player.x &&
+                    cube.y < player.y + player.size &&
+                    cube.y + cube.size > player.y) {
+                    
+                    if (cube.enemy) {
+                        endGame();
+                    } else {
+                        score += 10;
+                        scoreElement.innerText = `Score: ${score}`;
+                        cubes.splice(index, 1);
+                    }
+                }
+
+                // Remove cubes that fall off screen
+                if (cube.y > canvas.height) {
+                    if (!cube.enemy) {
+                        // Optional: Lose points if a green cube falls?
+                    }
+                    cubes.splice(index, 1);
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Player
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+
+            // Draw Falling Cubes
+            cubes.forEach(cube => {
+                ctx.fillStyle = cube.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = cube.color;
+                ctx.fillRect(cube.x, cube.y, cube.size, cube.size);
+            });
+
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.font = "30px Arial";
+                ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+                ctx.font = "20px Arial";
+                ctx.fillText("Click to Restart", canvas.width / 2, canvas.height / 2 + 40);
+            }
+        }
+
+        function endGame() {
+            gameOver = true;
+        }
+
+        function resetGame() {
+            score = 0;
+            cubes = [];
+            spawnRate = 60;
+            gameOver = false;
+            scoreElement.innerText = `Score: 0`;
+            gameLoop();
+        }
+
+        canvas.addEventListener('click', () => {
+            if (gameOver) resetGame();
+        });
+
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
