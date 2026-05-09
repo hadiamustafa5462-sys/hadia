@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive JS Paint</title>
+    <title>Pro JS Paint</title>
     <style>
-        /* CSS: Styling the UI */
         body {
             margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background-color: #f4f4f9;
         }
 
@@ -22,115 +21,133 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            gap: 25px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        label {
             color: white;
-            font-weight: bold;
         }
 
-        input[type="color"] {
-            border: none;
-            width: 40px;
-            height: 40px;
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="color"], input[type="range"] {
             cursor: pointer;
-            background: none;
         }
 
-        #clearBtn {
-            padding: 10px 20px;
-            background-color: #e74c3c;
-            color: white;
+        button {
+            padding: 8px 15px;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            transition: background 0.3s;
+            transition: 0.2s;
         }
 
-        #clearBtn:hover {
-            background-color: #c0392b;
-        }
+        #eraserBtn { background-color: #f39c12; color: white; }
+        #eraserBtn.active { background-color: #d35400; outline: 2px solid white; }
+        
+        #clearBtn { background-color: #e74c3c; color: white; }
+        #clearBtn:hover { background-color: #c0392b; }
 
         canvas {
             margin-top: 20px;
             border: 2px solid #2c3e50;
-            border-radius: 4px;
             background-color: white;
             cursor: crosshair;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
-        <label for="colorPicker">Brush Color:</label>
-        <input type="color" id="colorPicker" value="#000000">
-        <button id="clearBtn">Clear Canvas</button>
+        <div class="tool-group">
+            <label>Color:</label>
+            <input type="color" id="colorPicker" value="#000000">
+        </div>
+
+        <div class="tool-group">
+            <label>Size:</label>
+            <input type="range" id="sizePicker" min="1" max="50" value="5">
+            <span id="sizeVal">5</span>
+        </div>
+
+        <div class="tool-group">
+            <button id="eraserBtn">Eraser</button>
+            <button id="clearBtn">Clear All</button>
+        </div>
     </div>
 
     <canvas id="paintCanvas"></canvas>
 
     <script>
-        // JavaScript: Handling the Logic
         const canvas = document.getElementById('paintCanvas');
         const ctx = canvas.getContext('2d');
         const colorPicker = document.getElementById('colorPicker');
+        const sizePicker = document.getElementById('sizePicker');
+        const sizeVal = document.getElementById('sizeVal');
+        const eraserBtn = document.getElementById('eraserBtn');
         const clearBtn = document.getElementById('clearBtn');
 
-        // Initialize Canvas Dimensions
         canvas.width = window.innerWidth * 0.9;
         canvas.height = 600;
 
         let painting = false;
+        let isEraser = false;
 
-        // Start drawing when mouse is pressed
+        // Toggle Eraser
+        eraserBtn.addEventListener('click', () => {
+            isEraser = !isEraser;
+            eraserBtn.classList.toggle('active');
+            eraserBtn.innerText = isEraser ? "Brush Mode" : "Eraser";
+        });
+
+        // Update Size Label
+        sizePicker.addEventListener('input', () => {
+            sizeVal.innerText = sizePicker.value;
+        });
+
         function startPosition(e) {
             painting = true;
             draw(e); 
         }
 
-        // Stop drawing when mouse is released
         function finishedPosition() {
             painting = false;
-            ctx.beginPath(); // Resets the path so strokes don't connect
+            ctx.beginPath();
         }
 
-        // The drawing logic
         function draw(e) {
             if (!painting) return;
 
-            // Brush Settings
-            ctx.lineWidth = 5;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = colorPicker.value;
-
-            // Calculate Mouse Position relative to Canvas
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // Create the line
+            ctx.lineWidth = sizePicker.value;
+            ctx.lineCap = 'round';
+
+            if (isEraser) {
+                // This mode "erases" to transparency
+                ctx.globalCompositeOperation = 'destination-out';
+            } else {
+                // Normal drawing mode
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = colorPicker.value;
+            }
+
             ctx.lineTo(x, y);
             ctx.stroke();
-            
-            // Smoothen the drawing path
             ctx.beginPath();
             ctx.moveTo(x, y);
         }
 
-        // Event Listeners for Mouse Actions
         canvas.addEventListener('mousedown', startPosition);
         canvas.addEventListener('mouseup', finishedPosition);
         canvas.addEventListener('mousemove', draw);
-        
-        // Handle Mouse leaving the canvas area
         canvas.addEventListener('mouseleave', finishedPosition);
 
-        // Clear Button Logic
         clearBtn.addEventListener('click', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         });
